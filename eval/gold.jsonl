@@ -1,0 +1,8 @@
+{"question": "What are the standard core working hours during which employees must be available?", "expected_source": "employee_handbook.md"}
+{"question": "How many weeks of fully paid leave is a primary caregiver eligible for?", "expected_source": "employee_handbook.md"}
+{"question": "What is the minimum character length required for employee passwords?", "expected_source": "it_security_policy.md"}
+{"question": "What email address should suspicious phishing emails be forwarded to?", "expected_source": "it_security_policy.md"}
+{"question": "What is the standard nightly lodging reimbursement limit for standard business travel?", "expected_source": "travel_policy.md"}
+{"question": "Within how many calendar days must travel expense reports be submitted after returning?", "expected_source": "travel_policy.md"}
+{"question": "Where is the Acme Corp headquarters located?", "expected_source": "company_faq.md"}
+{"question": "On what days and times are snacks and beverages restocked in the office kitchen?", "expected_source": "company_faq.md"}
