@@ -762,13 +762,16 @@ def format_context_string(retrieved_chunks: List[Dict[str, Any]]) -> str:
 def ask_question(question: str, config: Dict[str, Any], trace: Optional[TraceEmitter] = None) -> Dict[str, Any]:
     """
     Queries the RAG pipeline synchronously (blocks until answer completes).
-    Returns a dictionary:
+    Returns a dictionary conforming to Stage 3:
     {
         "answer": str,
-        "status": str, # "ok", "empty_index", "mismatch"
-        "retrieved_chunks": list of dict,
-        "trace_id": str,
-        "trace_events": list of dict
+        "contexts": list[str],
+        "meta": {
+            "status": str, # "ok", "empty_index", "mismatch"
+            "retrieved_chunks": list of dict,
+            "trace_id": str,
+            "trace_events": list of dict
+        }
     }
     """
     if not trace:
@@ -802,10 +805,13 @@ def ask_question(question: str, config: Dict[str, Any], trace: Optional[TraceEmi
         trace.save_to_disk()
         return {
             "answer": "",
-            "status": status,
-            "retrieved_chunks": [],
-            "trace_id": trace.trace_id,
-            "trace_events": trace.events
+            "contexts": [],
+            "meta": {
+                "status": status,
+                "retrieved_chunks": [],
+                "trace_id": trace.trace_id,
+                "trace_events": trace.events
+            }
         }
 
     # 2. Formulate context and prompt
@@ -850,10 +856,13 @@ def ask_question(question: str, config: Dict[str, Any], trace: Optional[TraceEmi
 
         return {
             "answer": answer,
-            "status": "ok",
-            "retrieved_chunks": retrieved_chunks,
-            "trace_id": trace.trace_id,
-            "trace_events": trace.events
+            "contexts": [c["content"] for c in retrieved_chunks],
+            "meta": {
+                "status": "ok",
+                "retrieved_chunks": retrieved_chunks,
+                "trace_id": trace.trace_id,
+                "trace_events": trace.events
+            }
         }
     except Exception as e:
         trace.emit(

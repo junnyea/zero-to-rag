@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "questions": [
+    {
+      "id": "q01",
+      "category": "single_fact",
+      "question": "Where is the Acme Corp headquarters located?",
+      "reference": "Acme Corp headquarters is located on the 5th floor of the Innovation Towers building at 789 Innovation Boulevard, Suite 500, Tech City, CA 94016.",
+      "expected_behavior": "answer",
+      "notes": "Tests simple, single-document retrieval and direct fact matching against company_faq.md."
+    },
+    {
+      "id": "q02",
+      "category": "single_fact",
+      "question": "What is the standard lodging limit per night for standard business travel at Acme Corp?",
+      "reference": "The standard lodging limit for standard business travel at Acme Corp is $180 per night (excluding local taxes).",
+      "expected_behavior": "answer",
+      "notes": "Tests retrieval of a numeric financial parameter from travel_policy.md."
+    },
+    {
+      "id": "q03",
+      "category": "single_fact",
+      "question": "Who is Daniel Lim's employer, and what is his job grade and monthly transport allowance?",
+      "reference": "Daniel Lim is employed by Northstar Manufacturing Pte. Ltd. His job grade is G4 and his monthly transport allowance is SGD 400.",
+      "expected_behavior": "answer",
+      "notes": "Tests single-fact retrieval from the Northstar reference guide (northstart.txt)."
+    },
+    {
+      "id": "q04",
+      "category": "single_fact",
+      "question": "What is the maximum number of unused annual leave days that a Northstar Manufacturing employee can carry forward?",
+      "reference": "A maximum of 10 unused leave days may be carried forward.",
+      "expected_behavior": "answer",
+      "notes": "Tests numeric leave retrieval from northstart.txt."
+    },
+    {
+      "id": "q05",
+      "category": "multi_hop",
+      "question": "What is the password complexity minimum length requirement for Acme Corp, and how does it compare to the password length requirement for Northstar Manufacturing?",
+      "reference": "Acme Corp requires passwords to be at least 15 characters in length, whereas Northstar Manufacturing requires passwords to contain at least 14 characters.",
+      "expected_behavior": "answer",
+      "notes": "Tests multi-hop cross-company retrieval combining it_security_policy.md and northstart.txt."
+    },
+    {
+      "id": "q06",
+      "category": "multi_hop",
+      "question": "Who approves a purchase of SGD 30,000 at Northstar Manufacturing, and what is the rule for purchases below SGD 5,000?",
+      "reference": "At Northstar Manufacturing, a purchase of SGD 30,000 requires approval from the relevant divisional director and Finance Director. Purchases below SGD 5,000 require approval from the department manager.",
+      "expected_behavior": "answer",
+      "notes": "Tests multi-hop policy analysis combining different purchase bands from the procurement policy in northstart.txt."
+    },
+    {
+      "id": "q07",
+      "category": "aggregation",
+      "question": "What are the FY2026 revenue targets for each of the three business divisions at Northstar Manufacturing, and what is the total approved revenue target?",
+      "reference": "At Northstar Manufacturing, the revenue targets by business division are: SGD 92 million for Industrial Cooling Systems, SGD 36 million for Maintenance and Support Services, and SGD 20 million for Energy-Efficient Technology Solutions. The total approved revenue target is SGD 148 million.",
+      "expected_behavior": "answer",
+      "notes": "Tests aggregation and extraction of multiple structured data points from the Revenue Summary section of northstart.txt."
+    },
+    {
+      "id": "q08",
+      "category": "out_of_scope",
+      "question": "What is Acme Corp's policy on maternity leave?",
+      "reference": null,
+      "expected_behavior": "refuse",
+      "notes": "Tests the system's ability to refuse to answer when the information is not present in the Acme Corp corpus."
+    },
+    {
+      "id": "q09",
+      "category": "out_of_scope",
+      "question": "How much does Northstar Manufacturing spend on employee healthcare benefits?",
+      "reference": null,
+      "expected_behavior": "refuse",
+      "notes": "Tests the system's ability to refuse to answer when the information is not covered by the Northstar Manufacturing guide or budget."
+    },
+    {
+      "id": "q10",
+      "category": "ambiguous",
+      "question": "What is the policy for booking flights?",
+      "reference": "The policy depends on the company. For Acme Corp, flights must be booked through the AcmeTravel online portal (https://travel.acme.corp), requiring domestic flights to be booked at least 14 days and international flights 21 days in advance, with economy class mandatory for flights under 6 hours. For Northstar Manufacturing, flights under six hours should be booked in economy class and require manager approval, while business-class travel requires approval from a divisional director.",
+      "expected_behavior": "answer",
+      "notes": "Tests the system's capacity to synthesize two distinct policies (Acme Corp and Northstar Manufacturing) for a broad/ambiguous topic."
+    }
+  ]
+}
