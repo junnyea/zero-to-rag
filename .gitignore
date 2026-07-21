@@ -15,6 +15,13 @@ htmlcov/
 # Local Vector Database
 chroma_db/
 
+# Claude Worktrees and Temp files
+.claude/worktrees/
+.claude/subagents/
+.claude/scheduled_tasks.json
+.claude/active-plan.md
+.claude/plan.md
+
 # Streamlit Cache
 .streamlit/
 
