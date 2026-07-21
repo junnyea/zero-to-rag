@@ -184,8 +184,8 @@ if not preflight_ok:
 # Load latest index stats
 stats = get_index_stats(config["persist_dir"])
 
-# Create Ingest / Ask tabs
-tab1, tab2 = st.tabs(["📁 Ingest Documents", "❓ Ask Questions"])
+# Create Ingest / Ask / Explorer tabs
+tab1, tab2, tab3 = st.tabs(["📁 Ingest Documents", "❓ Ask Questions", "🗃️ Chroma DB Explorer"])
 
 # ----------------- TAB 1: INGEST -----------------
 with tab1:
@@ -352,3 +352,90 @@ with tab2:
                             )
                             st.code(chunk["content"], language="text")
                             st.markdown("---")
+
+# ----------------- TAB 3: CHROMA EXPLORER -----------------
+with tab3:
+    st.subheader("🗃️ Chroma DB Vector Explorer")
+    st.markdown(
+        "Direct visual viewer into the persistent in-process **Chroma collection (`docs`)**. "
+        "Browse the exact vector-indexed text chunks and metadata stored in your SQLite database."
+    )
+
+    if stats["total_chunks"] == 0:
+        st.info("👉 The index is empty. Ingest documents first to view them here.")
+    else:
+        # Load raw data from Chroma
+        from rag.ingest import get_chroma_client_and_collection
+        try:
+            client, collection = get_chroma_client_and_collection(config["persist_dir"])
+            # Fetch all stored items
+            raw_data = collection.get(include=["documents", "metadatas"])
+            ids = raw_data.get("ids", [])
+            documents = raw_data.get("documents", [])
+            metadatas = raw_data.get("metadatas", [])
+
+            # Compile into high-level structured list
+            all_chunks = []
+            for idx, cid in enumerate(ids):
+                meta = metadatas[idx] if idx < len(metadatas) else {}
+                doc_text = documents[idx] if idx < len(documents) else ""
+
+                # Extract original text if stored, else fallback
+                original_text = meta.get("original_text") if meta else None
+                if not original_text:
+                    original_text = doc_text
+                    if original_text.startswith("search_document: "):
+                        original_text = original_text[len("search_document: "):]
+
+                all_chunks.append({
+                    "id": cid,
+                    "source": meta.get("source", "unknown") if meta else "unknown",
+                    "chunk_index": meta.get("chunk_index", -1) if meta else -1,
+                    "char_start": meta.get("char_start", -1) if meta else -1,
+                    "char_end": meta.get("char_end", -1) if meta else -1,
+                    "file_hash": meta.get("file_hash", "unknown") if meta else "unknown",
+                    "content": original_text
+                })
+
+            # Sort primarily by Source, then by Chunk Index
+            all_chunks.sort(key=lambda x: (x["source"], x["chunk_index"]))
+
+            # --- Filter Controls ---
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                # File Selector dropdown
+                unique_sources = sorted(list(set(chunk["source"] for chunk in all_chunks)))
+                file_filter = st.selectbox("📂 Filter by Source File:", ["All Files"] + unique_sources)
+
+            with col2:
+                # Keyword Search input
+                search_query = st.text_input("🔍 Search Chunk Content (Keyword):", placeholder="Type a keyword to filter chunks...")
+
+            # --- Apply Filters ---
+            filtered_chunks = all_chunks
+            if file_filter != "All Files":
+                filtered_chunks = [c for c in filtered_chunks if c["source"] == file_filter]
+            if search_query:
+                filtered_chunks = [c for c in filtered_chunks if search_query.lower() in c["content"].lower()]
+
+            # --- Display Results ---
+            st.markdown(f"Showing **{len(filtered_chunks)}** of **{len(all_chunks)}** total chunks in the database:")
+
+            for idx, chunk in enumerate(filtered_chunks):
+                with st.container():
+                    st.markdown(
+                        f"🔹 **Chunk ID:** `{chunk['id']}` | **File:** `{chunk['source']}` | **Index:** `{chunk['chunk_index']}`"
+                    )
+
+                    # Display metadata fields in small text
+                    st.caption(
+                        f"File Hash: `{chunk['file_hash']}` | Characters: `{chunk['char_start']}` to `{chunk['char_end']}`"
+                    )
+
+                    # Text box displaying raw original text
+                    st.code(chunk["content"], language="text")
+                    st.divider()
+
+        except Exception as e:
+            st.error(f"Failed to read Chroma collection: {e}")
+
