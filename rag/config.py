@@ -1,6 +1,10 @@
 import os
 import yaml
 from typing import Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables from .env file at startup
+load_dotenv()
 
 DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
 
