@@ -19,3 +19,7 @@ chroma_db/
 # OS
 .DS_Store
 Thumbs.db
+
+# Tracing
+traces/
+

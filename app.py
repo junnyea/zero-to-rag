@@ -1,11 +1,14 @@
 import os
+import json
+from datetime import datetime
 import streamlit as st
 from typing import Dict, Any, List
 
 from rag.config import load_config, save_config, validate_config
-from rag.preflight import check_ollama_status
+from rag.preflight import check_ollama_status, check_cohere_key_status
 from rag.ingest import ingest_file, get_index_stats, reset_index, load_file_content
 from rag.query import ask_question_stream
+from rag.tracing import load_all_traces, TraceEmitter
 
 # --- Page Setup ---
 st.set_page_config(
@@ -17,15 +20,63 @@ st.set_page_config(
 # Initialize Session States
 if "show_reset_confirm" not in st.session_state:
     st.session_state.show_reset_confirm = False
+if "current_trace_events" not in st.session_state:
+    st.session_state.current_trace_events = None
+if "selected_trace_id" not in st.session_state:
+    st.session_state.selected_trace_id = None
+if "cohere_calls" not in st.session_state:
+    st.session_state.cohere_calls = 0
 
 # Ensure sample_docs folder exists
 SAMPLE_DOCS_DIR = "sample_docs"
 if not os.path.exists(SAMPLE_DOCS_DIR):
     os.makedirs(SAMPLE_DOCS_DIR)
 
+# --- Trace Timeline Renderer ---
+def render_trace_timeline(events: List[Dict[str, Any]]):
+    """Renders a simplified, highly readable timeline of trace events."""
+    if not events:
+        st.info("No events in this trace.")
+        return
+
+    # Sort events by sequence to be absolutely sure
+    sorted_events = sorted(events, key=lambda x: x.get("seq", 0))
+
+    for ev in sorted_events:
+        phase = ev.get("phase", "REASON")
+        step = ev.get("step", "query")
+        detail = ev.get("detail", "")
+        duration = ev.get("duration_ms")
+        payload = ev.get("payload", {})
+
+        # Determine emoji & styling based on phase
+        if phase == "REASON":
+            emoji = "🧠"
+            color = "blue"
+        elif phase == "ACT":
+            emoji = "⚡"
+            color = "orange"
+        else: # OBSERVE
+            emoji = "👁️"
+            color = "green"
+
+        # Duration label if present
+        dur_str = f" :grey[({duration} ms)]" if duration is not None else ""
+
+        # Title line
+        st.markdown(f"{emoji} **:{color}[{phase}]** | `[{step}]` {detail}{dur_str}")
+
+        # If payload has content, show it in an expander
+        if payload and any(payload.values()):
+            with st.expander("📝 View Details / Payload"):
+                st.json(payload)
+
+        st.markdown("---")
+
 # --- Configuration & Preflight ---
 config = load_config()
 preflight = check_ollama_status()
+cohere_preflight = check_cohere_key_status()
 
 # ----------------- SIDEBAR -----------------
 with st.sidebar:
@@ -62,13 +113,53 @@ with st.sidebar:
         st.warning(llm_status["message"])
         st.code(llm_status["command"], language="bash")
 
+    # Cohere Key Status
+    if cohere_preflight["key_present"]:
+        st.markdown("● **Cohere API Key:** :green[Loaded]")
+    else:
+        st.markdown("● **Cohere API Key:** :orange[Missing]")
+
     # Flag indicating whether we can run RAG
     preflight_ok = preflight["server_running"] and embed_status["status"] and llm_status["status"]
 
     st.divider()
 
-    # 2. Sliders & Configuration Controls
-    st.subheader("🛠️ Parameters")
+    # 2. Strategy & Reranker Choice
+    st.subheader("🎯 Strategy & Reranker")
+
+    strategy_options = ["adaptive", "plain", "multi_query", "hyde"]
+    strategy_idx = strategy_options.index(config.get("retrieval_strategy", "adaptive"))
+    new_strategy = st.selectbox(
+        "Retrieval Strategy",
+        options=strategy_options,
+        index=strategy_idx,
+        help="adaptive: score-gated rewrite; plain: single vector search; multi_query: LLM expansion; hyde: hypothetical answer vector."
+    )
+
+    reranker_options = ["cohere", "none", "local"]
+    reranker_idx = reranker_options.index(config.get("reranker", "cohere"))
+    new_reranker = st.selectbox(
+        "Reranker",
+        options=reranker_options,
+        index=reranker_idx,
+        help="Select cross-encoder reranker to sort top chunks."
+    )
+
+    # UI Badges & Key Warnings for Cohere Egress (R3 & R6)
+    if new_reranker == "cohere":
+        st.warning("⚠️ **Data Egress Active:** Document content and queries leave this machine and are sent to Cohere's servers.")
+
+        if not cohere_preflight["key_present"]:
+            st.error("🔑 **API Key Required:** Cohere Reranker requires the `COHERE_API_KEY` environment variable.")
+            st.code("export COHERE_API_KEY=\"your_key_here\"", language="bash")
+
+        # Display quota usage counter (R3)
+        st.metric("Cohere API Calls (Session)", f"{st.session_state.cohere_calls}", help="Calculated based on actual calls made this session.")
+
+    st.divider()
+
+    # 3. Sliders & Configuration Controls
+    st.subheader("🛠️ Tuning Parameters")
 
     # Chunk Size
     new_chunk_size = st.slider(
@@ -90,21 +181,56 @@ with st.sidebar:
         help="Overlap size between adjacent segments to prevent splitting sentences."
     )
 
-    # Top K
+    # Top K (final context size)
     new_top_k = st.slider(
         "Retrieval Depth (Top-K)",
         min_value=1,
         max_value=10,
         value=int(config.get("top_k", 3)),
         step=1,
-        help="Number of chunks to retrieve for grounding prompt context."
+        help="Number of chunks to send to the final LLM prompt context."
+    )
+
+    # Candidate K (pool size for reranking)
+    new_candidate_k = st.slider(
+        "Candidate Pool (Candidate-K)",
+        min_value=5,
+        max_value=50,
+        value=int(config.get("candidate_k", 20)),
+        step=5,
+        help="Size of the document pool retrieved before reranking."
+    )
+
+    # Rewrite Similarity Trigger
+    new_rewrite_trigger_score = st.slider(
+        "Rewrite Trigger Threshold",
+        min_value=0.0,
+        max_value=1.0,
+        value=float(config.get("rewrite_trigger_score", 0.5)),
+        step=0.05,
+        help="Similarity score gate. If the top vector match falls below this, the LLM will rewrite the query (adaptive strategy only)."
+    )
+
+    # Max Rewrites
+    new_max_rewrites = st.slider(
+        "Max Query Rewrites",
+        min_value=0,
+        max_value=3,
+        value=int(config.get("max_rewrites", 2)),
+        step=1,
+        help="Maximum re-try attempts for score-gated query rephrasing."
     )
 
     # Update active config dict
     temp_config = config.copy()
+    temp_config["retrieval_strategy"] = new_strategy
+    temp_config["reranker"] = new_reranker
     temp_config["chunk_size"] = new_chunk_size
     temp_config["chunk_overlap"] = new_chunk_overlap
     temp_config["top_k"] = new_top_k
+    temp_config["candidate_k"] = new_candidate_k
+    temp_config["rewrite_trigger_score"] = new_rewrite_trigger_score
+    temp_config["max_rewrites"] = new_max_rewrites
 
     # Validate the modified values
     validation_err = validate_config(temp_config)
@@ -114,9 +240,14 @@ with st.sidebar:
         temp_config = config.copy()
     else:
         # Save config if changed
-        if (config.get("chunk_size") != new_chunk_size or
+        if (config.get("retrieval_strategy") != new_strategy or
+            config.get("reranker") != new_reranker or
+            config.get("chunk_size") != new_chunk_size or
             config.get("chunk_overlap") != new_chunk_overlap or
-            config.get("top_k") != new_top_k):
+            config.get("top_k") != new_top_k or
+            config.get("candidate_k") != new_candidate_k or
+            config.get("rewrite_trigger_score") != new_rewrite_trigger_score or
+            config.get("max_rewrites") != new_max_rewrites):
             save_config(temp_config)
             config = temp_config
 
@@ -184,8 +315,8 @@ if not preflight_ok:
 # Load latest index stats
 stats = get_index_stats(config["persist_dir"])
 
-# Create Ingest / Ask / Explorer tabs
-tab1, tab2, tab3 = st.tabs(["📁 Ingest Documents", "❓ Ask Questions", "🗃️ Chroma DB Explorer"])
+# Create Ingest / Ask / Trace / Explorer tabs
+tab1, tab2, tab3, tab4 = st.tabs(["📁 Ingest Documents", "❓ Ask Questions", "🧠 Decision Traces", "🗃️ Chroma DB Explorer"])
 
 # ----------------- TAB 1: INGEST -----------------
 with tab1:
@@ -312,19 +443,24 @@ with tab2:
 
         if st.button("Get Answer", type="primary") and question:
             with st.spinner("Retrieving document context and generating answer..."):
-                # Call stream query
-                token_stream, chunks, status = ask_question_stream(question, config)
+                # Call stream query (now returns trace object as 4th element)
+                token_stream, chunks, status, active_trace = ask_question_stream(question, config)
 
                 if status == "empty_index":
                     st.info("Please ingest documents first.")
+                    st.session_state.current_trace_events = None
                 elif status == "mismatch":
                     st.error("Model mismatch! Reset index and re-ingest first.")
+                    st.session_state.current_trace_events = None
                 elif status == "ok":
                     st.markdown("### 💬 Answer")
 
                     # Use streamlit stream visualization (P1 feature)
                     # We write streamed output in real-time as tokens generate
                     full_answer = st.write_stream(token_stream)
+
+                    # Store the completed trace events into session state
+                    st.session_state.current_trace_events = active_trace.events
 
                     # Highlight sources cited in the response
                     st.markdown("---")
@@ -353,8 +489,83 @@ with tab2:
                             st.code(chunk["content"], language="text")
                             st.markdown("---")
 
-# ----------------- TAB 3: CHROMA EXPLORER -----------------
+        # Inlined decision trace timeline under Tab 2 (even if we didn't just run a question, if session has it, render it)
+        if st.session_state.current_trace_events:
+            st.markdown("---")
+            with st.expander("🧠 Active Decision Trace Timeline (Trace ID: " + st.session_state.current_trace_events[0].get("trace_id", "unknown") + ")", expanded=True):
+                st.markdown("Below is the real-time reasoning and execution sequence for your query.")
+                render_trace_timeline(st.session_state.current_trace_events)
+
+# ----------------- TAB 3: TRACES -----------------
 with tab3:
+    st.subheader("🧠 Decision Trace Registry & Timeline")
+    st.markdown(
+        "Observe the exact step-by-step logic, reasoning, and actions taken by the RAG system. "
+        "The system records a detailed trace log for every single query attempt."
+    )
+
+    all_traces = load_all_traces(config.get("trace_dir", "./traces"))
+
+    if not all_traces:
+        st.info("👉 No trace history found yet. Go to the **Ask Questions** tab and enter a question to generate a trace.")
+    else:
+        # Create option list for trace dropdown
+        trace_options = []
+        trace_id_map = {}
+
+        for t in all_traces:
+            tid = t["trace_id"]
+            ts = t["timestamp"]
+            # Convert ISO timestamp to a nice readable form
+            try:
+                dt = datetime.fromisoformat(ts)
+                time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                time_str = ts[:19].replace("T", " ")
+
+            q = t.get("question") or "Empty or failed query"
+            q_short = q if len(q) <= 60 else q[:57] + "..."
+            label = f"[{time_str}] {q_short} ({tid})"
+
+            trace_options.append(label)
+            trace_id_map[label] = tid
+
+        # Dropdown to select a trace
+        selected_label = st.selectbox(
+            "📋 Select past trace to inspect:",
+            options=trace_options,
+            help="Select any past question to inspect its step-by-step reasoning timeline."
+        )
+
+        selected_tid = trace_id_map[selected_label]
+
+        # Load the selected trace data
+        selected_trace = next((t for t in all_traces if t["trace_id"] == selected_tid), None)
+
+        if selected_trace:
+            # Display high-level metadata about this trace
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"**Trace ID:** `{selected_trace['trace_id']}`")
+            with col2:
+                st.markdown(f"**Retrieval Strategy:** `{selected_trace.get('strategy', 'plain')}`")
+            with col3:
+                st.markdown(f"**Reranker:** `{selected_trace.get('reranker', 'none')}`")
+
+            # Trace download button (R8 / P1)
+            trace_json_bytes = json.dumps(selected_trace["events"], indent=2, ensure_ascii=False)
+            st.download_button(
+                label="📥 Download Trace (JSON)",
+                data=trace_json_bytes,
+                file_name=f"trace_{selected_trace['trace_id']}.json",
+                mime="application/json"
+            )
+
+            st.markdown("### 🗺️ Timeline of Decisions")
+            render_trace_timeline(selected_trace["events"])
+
+# ----------------- TAB 4: CHROMA EXPLORER -----------------
+with tab4:
     st.subheader("🗃️ Chroma DB Vector Explorer")
     st.markdown(
         "Direct visual viewer into the persistent in-process **Chroma collection (`docs`)**. "

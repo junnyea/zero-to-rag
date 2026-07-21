@@ -10,7 +10,18 @@ DEFAULT_CONFIG = {
     "top_k": 3,
     "embed_model": "nomic-embed-text",
     "llm_model": "llama3.2:3b",
-    "persist_dir": "./chroma_db"
+    "persist_dir": "./chroma_db",
+    # Stage 2 Additions
+    "retrieval_strategy": "adaptive",
+    "reranker": "cohere",
+    "rerank_model": "rerank-v3.5",
+    "candidate_k": 20,
+    "rewrite_trigger_score": 0.5,
+    "max_rewrites": 2,
+    "multi_query_n": 3,
+    "query_llm_model": "llama3.2:3b",
+    "trace_dir": "./traces",
+    "trace_keep": 200
 }
 
 def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Dict[str, Any]:
@@ -42,7 +53,7 @@ def save_config(config: Dict[str, Any], config_path: str = DEFAULT_CONFIG_PATH) 
 def validate_config(config: Dict[str, Any]) -> str:
     """
     Validates configuration values.
-    Returns None if valid, or a friendly error message string if invalid.
+    Returns empty string if valid, or a friendly error message string if invalid.
     """
     try:
         chunk_size = int(config.get("chunk_size", 800))
@@ -68,5 +79,49 @@ def validate_config(config: Dict[str, Any]) -> str:
 
     if not config.get("llm_model"):
         return "LLM model must be specified."
+
+    # Stage 2 validations
+    strategy = config.get("retrieval_strategy", "adaptive")
+    if strategy not in ("adaptive", "plain", "multi_query", "hyde"):
+        return f"Invalid retrieval strategy '{strategy}'. Must be one of: 'adaptive', 'plain', 'multi_query', 'hyde'."
+
+    reranker = config.get("reranker", "cohere")
+    if reranker not in ("cohere", "none", "local"):
+        return f"Invalid reranker '{reranker}'. Must be one of: 'cohere', 'none', 'local'."
+
+    try:
+        candidate_k = int(config.get("candidate_k", 20))
+        if not (5 <= candidate_k <= 50):
+            return f"Candidate pool size ({candidate_k}) must be between 5 and 50."
+    except (ValueError, TypeError):
+        return "Candidate pool size 'candidate_k' must be an integer."
+
+    try:
+        trigger_score = float(config.get("rewrite_trigger_score", 0.5))
+        if not (0.0 <= trigger_score <= 1.0):
+            return f"Rewrite trigger score ({trigger_score}) must be between 0.0 and 1.0."
+    except (ValueError, TypeError):
+        return "Rewrite trigger score 'rewrite_trigger_score' must be a float."
+
+    try:
+        max_rewrites = int(config.get("max_rewrites", 2))
+        if not (0 <= max_rewrites <= 3):
+            return f"Max rewrites ({max_rewrites}) must be between 0 and 3."
+    except (ValueError, TypeError):
+        return "Max rewrites 'max_rewrites' must be an integer."
+
+    try:
+        multi_query_n = int(config.get("multi_query_n", 3))
+        if not (2 <= multi_query_n <= 5):
+            return f"Multi-query count ({multi_query_n}) must be between 2 and 5."
+    except (ValueError, TypeError):
+        return "Multi-query count 'multi_query_n' must be an integer."
+
+    try:
+        trace_keep = int(config.get("trace_keep", 200))
+        if not (50 <= trace_keep <= 1000):
+            return f"Trace retention count ({trace_keep}) must be between 50 and 1000."
+    except (ValueError, TypeError):
+        return "Trace retention count 'trace_keep' must be an integer."
 
     return ""
