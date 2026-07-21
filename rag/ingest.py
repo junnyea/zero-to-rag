@@ -179,7 +179,6 @@ def ingest_file(file_path: str) -> Dict[str, Any]:
     # The LangChain Chroma wrapper auto-merges or sets it on creation,
     # but we can explicitly update it on the client collection for safety
     collection.modify(metadata={
-        "hnsw:space": "cosine",
         "embed_model": config.embed_model,
         "chunk_size": config.chunk_size,
         "chunk_overlap": config.chunk_overlap

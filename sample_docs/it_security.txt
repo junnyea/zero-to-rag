@@ -1,0 +1,15 @@
+# ACME Corp IT Security and Data Protection Standards
+
+This document outlines the security rules and standards that all employees must follow to protect company devices, networks, and data.
+
+## 1. Password Complexity and Length Requirement
+All user accounts must be secured with a strong password. Passwords must be at least 14 characters in length and must include at least one uppercase letter, one lowercase letter, one number, and one special character (e.g., !, @, #, $, %). Passwords must be changed every 90 days. Users are prohibited from reusing any of their last five passwords.
+
+## 2. Multi-Factor Authentication (MFA)
+Multi-Factor Authentication (MFA) is mandatory for accessing all ACME Corp systems, services, and VPN networks. Employees must register their mobile device with the corporate MFA app during their onboarding orientation. Sharing MFA approval prompts or using unapproved secondary devices is strictly forbidden.
+
+## 3. Workstation Security and Inactivity Lockout
+Employees must never leave their laptops or workstations unattended while logged in. Workstations are configured with an automatic inactivity lockout timer set to 10 minutes. Laptops must be locked manually (using Windows Key + L, or Ctrl + Command + Q on macOS) whenever an employee steps away from their desk.
+
+## 4. Phishing and Suspicious Email Reporting
+Phishing remains a primary threat vector. If you receive an email that looks suspicious, has unexpected attachments, or asks for credentials or payments, do not click any links or download files. Report the email immediately using the "Report Phishing" button in Outlook, or forward it to security@acme.com.

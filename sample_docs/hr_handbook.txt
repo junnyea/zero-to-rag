@@ -1,0 +1,15 @@
+# ACME Corp Employee HR Handbook
+
+Welcome to ACME Corp! This handbook outlines our core HR policies, benefits, and standards.
+
+## 1. Annual Leave and Vacation Days
+All full-time employees are entitled to 20 days of paid vacation per calendar year. Vacation days accrue at a rate of 1.67 days per month worked. Employees must submit vacation requests via the HR portal at least two weeks in advance. Vacation days do not carry over to the next calendar year; unused leave expires on December 31st.
+
+## 2. Health and Wellness Benefits
+ACME Corp provides comprehensive health, dental, and vision insurance coverage starting on the first day of the month following the employee's start date. The company covers 80% of the insurance premium for individual coverage and 50% for family coverage.
+
+## 3. Sick Leave and Personal Days
+Employees receive 10 paid sick days per year. Sick leave is intended for personal illness or medical appointments. If you are absent for more than three consecutive days due to illness, you must provide a medical doctor's certificate to HR.
+
+## 4. Professional Development
+ACME Corp supports continuous learning and offers up to $2,000 per employee per calendar year in professional development reimbursement. This can be used for conferences, certifications, books, or courses related to your current role or career progression within the company.

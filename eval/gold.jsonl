@@ -1,0 +1,8 @@
+{"question": "What is the password length requirement?", "expected_source": "it_security.txt"}
+{"question": "How many days of paid vacation do employees get?", "expected_source": "hr_handbook.txt"}
+{"question": "What are the optional remote work days?", "expected_source": "remote_work_policy.md"}
+{"question": "How much is the home office equipment stipend?", "expected_source": "remote_work_policy.md"}
+{"question": "What is the automatic lockout timer set to?", "expected_source": "it_security.txt"}
+{"question": "How many peer approvals are required for code changes?", "expected_source": "qa_guidelines.md"}
+{"question": "What is the severity 1 bug resolution timeframe?", "expected_source": "qa_guidelines.md"}
+{"question": "How many sick leave days are provided?", "expected_source": "hr_handbook.txt"}
