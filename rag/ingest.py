@@ -63,6 +63,12 @@ def load_file_content(file_path: str, filename: str) -> str:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 return f.read()
+        except UnicodeDecodeError:
+            try:
+                with open(file_path, "r", encoding="latin-1") as f:
+                    return f.read()
+            except Exception as e:
+                raise ValueError(f"Failed to read text file: {e}")
         except Exception as e:
             raise ValueError(f"Failed to read text file: {e}")
 

@@ -103,3 +103,15 @@ def check_ollama_status() -> Dict[str, Any]:
         }
 
     return status
+
+def check_cohere_key_status() -> Dict[str, Any]:
+    """
+    Checks if COHERE_API_KEY is present in environment variables.
+    """
+    import os
+    key = os.environ.get("COHERE_API_KEY", "").strip()
+    is_present = len(key) > 0
+    return {
+        "key_present": is_present,
+        "message": "Cohere API key is loaded." if is_present else "COHERE_API_KEY environment variable is not set."
+    }

@@ -1,6 +1,16 @@
-chunk_overlap: 0
+candidate_k: 20
+chunk_overlap: 80
 chunk_size: 300
 embed_model: nomic-embed-text
 llm_model: llama3.2:3b
+max_rewrites: 2
+multi_query_n: 3
 persist_dir: ./chroma_db
+query_llm_model: llama3.2:3b
+rerank_model: rerank-v3.5
+reranker: cohere
+retrieval_strategy: adaptive
+rewrite_trigger_score: 0.5
 top_k: 3
+trace_dir: ./traces
+trace_keep: 200
