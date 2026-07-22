@@ -23,3 +23,7 @@ Thumbs.db
 # Tracing
 traces/
 
+# Evals
+evals/.cache/
+evals/scorecards/20*
+

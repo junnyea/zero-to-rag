@@ -161,51 +161,74 @@ async def evaluate_question_ragas(
 ) -> Tuple[Dict[str, float], int]:
     """
     Evaluates a single question against a set of Ragas metrics using a bounded semaphore.
-    Handles rate limits gracefully with backoff and jitter.
-    Returns (metric_scores_dict, judge_call_count).
+    Calls .ascore() directly on each metric object to bypass Ragas global evaluate class checks.
     """
     if not metrics_to_evaluate:
         return {}, 0
 
     async with semaphore:
-        for attempt in range(max_retries):
-            try:
-                # Prepare single-item dataset
-                data_list = [{
-                    "user_input": question,
-                    "retrieved_contexts": contexts,
-                    "response": answer,
-                    "reference": reference
-                }]
-                dataset = EvaluationDataset.from_list(data_list)
+        scores = {}
+        judge_calls = 0
 
-                # Execute evaluation in an executor to prevent blocking
-                results = await asyncio.to_thread(
-                    evaluate,
-                    dataset=dataset,
-                    metrics=metrics_to_evaluate
-                )
+        async def run_one_metric(metric, name) -> Tuple[str, float]:
+            # Run metric's ascore with exponential backoff
+            for attempt in range(max_retries):
+                try:
+                    # Map arguments based on signature
+                    if name == "faithfulness":
+                        result = await metric.ascore(
+                            user_input=question,
+                            response=answer,
+                            retrieved_contexts=contexts
+                        )
+                    elif name == "answer_relevancy":
+                        result = await metric.ascore(
+                            user_input=question,
+                            response=answer
+                        )
+                    elif name == "context_precision":
+                        result = await metric.ascore(
+                            user_input=question,
+                            reference=reference,
+                            retrieved_contexts=contexts
+                        )
+                    elif name == "context_recall":
+                        result = await metric.ascore(
+                            user_input=question,
+                            retrieved_contexts=contexts,
+                            reference=reference
+                        )
+                    else:
+                        raise ValueError(f"Unknown metric name: {name}")
 
-                # Parse scores
-                scores = {}
-                for name, metric in zip(metric_names, metrics_to_evaluate):
-                    # In Ragas 0.4.3, we retrieve scores directly from the output results
-                    scores[name] = float(results[name])
+                    # Ensure we handle null/NaN scores from local models gracefully as 0.0
+                    val = float(result.value) if result.value is not None else 0.0
+                    import math
+                    if math.isnan(val):
+                        val = 0.0
+                    return name, val
 
-                return scores, len(metrics_to_evaluate)
+                except Exception as e:
+                    err_str = str(e).lower()
+                    is_rate_limit = "429" in err_str or "resource_exhausted" in err_str or "rate" in err_str
+                    is_server_err = "500" in err_str or "503" in err_str or "server" in err_str
 
-            except Exception as e:
-                err_str = str(e).lower()
-                is_rate_limit = "429" in err_str or "resource_exhausted" in err_str or "rate" in err_str
-                is_server_err = "500" in err_str or "503" in err_str or "server" in err_str
-
-                if (is_rate_limit or is_server_err) and attempt < max_retries - 1:
-                    import random
-                    delay = (base_delay * (2 ** attempt)) + random.uniform(0, 1.0)
-                    await asyncio.sleep(delay)
-                else:
-                    # Re-raise on final attempt to let the caller handle it on a per-question basis
+                    if (is_rate_limit or is_server_err) and attempt < max_retries - 1:
+                        import random
+                        delay = (base_delay * (2 ** attempt)) + random.uniform(0, 1.0)
+                        await asyncio.sleep(delay)
+                        continue
                     raise e
+
+        # Run all metrics concurrently for this question
+        tasks = [run_one_metric(metric, name) for metric, name in zip(metrics_to_evaluate, metric_names)]
+        results = await asyncio.gather(*tasks)
+
+        for name, score in results:
+            scores[name] = score
+            judge_calls += 1
+
+        return scores, judge_calls
 
 # ----------------- Main Programmatic Entry Point -----------------
 
@@ -264,10 +287,11 @@ def run_eval(
         # Initialize Ragas LLM and Embeddings natively
         from ragas.llms import llm_factory
         if use_ollama:
+            from openai import AsyncOpenAI
             from ragas.embeddings import OpenAIEmbeddings
-            client = OpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
-            ragas_llm = llm_factory(judge_model, provider="openai", client=client)
-            ragas_embeddings = OpenAIEmbeddings(client=client, model="nomic-embed-text")
+            async_client = AsyncOpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
+            ragas_llm = llm_factory(judge_model, provider="openai", client=async_client)
+            ragas_embeddings = OpenAIEmbeddings(client=async_client, model="nomic-embed-text")
         else:
             from ragas.embeddings import GoogleEmbeddings
             client = genai.Client()
@@ -286,43 +310,70 @@ def run_eval(
         tot_judge_calls = 0
         tot_cache_hits = 0
 
-        async def process_item(item: Dict[str, Any]) -> Dict[str, Any]:
+        # STAGE 1: Execute RAG Pipeline Sequentially (avoids Chroma SQLite lock contention)
+        prepared_items = []
+        print("📥 Querying RAG pipeline sequentially for all questions...")
+        for item in questions_list:
+            qid = item["id"]
+            category = item["category"]
+            question = item["question"]
+            print(f"   - Querying: {qid}...")
+            start_q_time = time.time()
+            try:
+                pipeline_res = ask_question(question, rag_config)
+                answer = pipeline_res.get("answer", "")
+                contexts = pipeline_res.get("contexts", [])
+                q_error = None
+            except Exception as e:
+                print(f"   ❌ Query failed for {qid}: {e}")
+                answer = "[Pipeline Error]"
+                contexts = []
+                q_error = str(e)
+
+            prepared_items.append({
+                "item": item,
+                "answer": answer,
+                "contexts": contexts,
+                "error": q_error,
+                "start_q_time": start_q_time
+            })
+
+        # STAGE 2: Evaluate and Score Concurrently
+        print("\n⚖️  Scoring answers concurrently (LLM-as-judge)...")
+
+        async def process_scoring(prep_item: Dict[str, Any]) -> Dict[str, Any]:
             nonlocal tot_judge_calls, tot_cache_hits
+            item = prep_item["item"]
+            answer = prep_item["answer"]
+            contexts = prep_item["contexts"]
+            pipeline_error = prep_item["error"]
+            start_q_time = prep_item["start_q_time"]
+
             qid = item["id"]
             category = item["category"]
             question = item["question"]
             reference = item.get("reference")
             expected_behavior = item.get("expected_behavior", "answer")
 
-            print(f"🔄 Running RAG pipeline for {qid} ({category})...")
-            start_q_time = time.time()
-
-            # A. Execute standard query pipeline
-            try:
-                # Ask question synchronously (blocking function called in thread to keep loop free)
-                pipeline_res = await asyncio.to_thread(ask_question, question, rag_config)
-                answer = pipeline_res.get("answer", "")
-                contexts = pipeline_res.get("contexts", [])
-            except Exception as e:
-                print(f"❌ Pipeline query failed for question {qid}: {e}")
+            if pipeline_error:
                 q_res = {
                     "id": qid,
                     "category": category,
                     "question": question,
                     "reference": reference,
                     "expected_behavior": expected_behavior,
-                    "answer": "[Pipeline Error]",
+                    "answer": answer,
                     "contexts": [],
                     "scores": {},
                     "correct_refusal": None,
-                    "error": str(e),
+                    "error": pipeline_error,
                     "duration_seconds": round(time.time() - start_q_time, 2)
                 }
                 if on_result:
                     on_result(qid, q_res)
                 return q_res
 
-            # B. Score result
+            # Score result
             scores = {}
             correct_refusal = None
             q_error = None
@@ -405,8 +456,8 @@ def run_eval(
                 on_result(qid, q_res)
             return q_res
 
-        # Run process_item for all questions concurrently
-        tasks = [process_item(item) for item in questions_list]
+        # Run process_scoring for all questions concurrently
+        tasks = [process_scoring(p_item) for p_item in prepared_items]
         rows = await asyncio.gather(*tasks)
         return rows, tot_judge_calls, tot_cache_hits
 
