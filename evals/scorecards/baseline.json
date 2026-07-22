@@ -1,0 +1,166 @@
+{
+  "metadata": {
+    "timestamp": "2026-07-22T01:16:47.632881",
+    "git_commit": "8b39aff",
+    "ragas_version": "0.4.3",
+    "judge_model": "llama3.2:3b",
+    "wall_time_seconds": 94.7,
+    "judge_call_count": 1,
+    "cache_hit_count": 0
+  },
+  "metrics": {
+    "faithfulness": -1.0,
+    "answer_relevancy": -1.0,
+    "context_precision": -1.0,
+    "context_recall": -1.0,
+    "refusal_accuracy": 1.0
+  },
+  "questions": [
+    {
+      "id": "q01",
+      "category": "single_fact",
+      "question": "Where is the Acme Corp headquarters located?",
+      "reference": "Acme Corp headquarters is located on the 5th floor of the Innovation Towers building at 789 Innovation Boulevard, Suite 500, Tech City, CA 94016.",
+      "expected_behavior": "answer",
+      "answer": "[Pipeline Error]",
+      "contexts": [],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "Could not connect to tenant default_tenant. Are you sure it exists?",
+      "duration_seconds": 0.15
+    },
+    {
+      "id": "q02",
+      "category": "single_fact",
+      "question": "What is the standard lodging limit per night for standard business travel at Acme Corp?",
+      "reference": "The standard lodging limit for standard business travel at Acme Corp is $180 per night (excluding local taxes).",
+      "expected_behavior": "answer",
+      "answer": "The maximum allowable nightly rate for standard business travel is $180 per night (excluding local taxes) [travel_policy.md].",
+      "contexts": [
+        "*   **Standard Lodging Limit:** The maximum allowable nightly rate for standard business travel is **$180 per night** (excluding local taxes).",
+        "---\n\n## 2. Lodging Guidelines and Allowable Limits\nAcme Corp reimburses reasonable hotel accommodation costs for business travel.",
+        "# Acme Corp Corporate Travel & Expense Policy\n\n**Document ID:** ACME-FIN-TRV-2026  \n**Effective Date:** February 1, 2026  \n**Version:** 2.5  \n**Owner:** Finance and Accounts Payable Team  \n\n---"
+      ],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "All metrics must be initialised metric objects, e.g: metrics=[BleuScore(), AspectCritic()]",
+      "duration_seconds": 77.45
+    },
+    {
+      "id": "q03",
+      "category": "single_fact",
+      "question": "Who is Daniel Lim's employer, and what is his job grade and monthly transport allowance?",
+      "reference": "Daniel Lim is employed by Northstar Manufacturing Pte. Ltd. His job grade is G4 and his monthly transport allowance is SGD 400.",
+      "expected_behavior": "answer",
+      "answer": "[Pipeline Error]",
+      "contexts": [],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "Could not connect to tenant default_tenant. Are you sure it exists?",
+      "duration_seconds": 0.15
+    },
+    {
+      "id": "q04",
+      "category": "single_fact",
+      "question": "What is the maximum number of unused annual leave days that a Northstar Manufacturing employee can carry forward?",
+      "reference": "A maximum of 10 unused leave days may be carried forward.",
+      "expected_behavior": "answer",
+      "answer": "[Pipeline Error]",
+      "contexts": [],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "Could not connect to tenant default_tenant. Are you sure it exists?",
+      "duration_seconds": 0.15
+    },
+    {
+      "id": "q05",
+      "category": "multi_hop",
+      "question": "What is the password complexity minimum length requirement for Acme Corp, and how does it compare to the password length requirement for Northstar Manufacturing?",
+      "reference": "Acme Corp requires passwords to be at least 15 characters in length, whereas Northstar Manufacturing requires passwords to contain at least 14 characters.",
+      "expected_behavior": "answer",
+      "answer": "[Pipeline Error]",
+      "contexts": [],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "Could not connect to tenant default_tenant. Are you sure it exists?",
+      "duration_seconds": 0.15
+    },
+    {
+      "id": "q06",
+      "category": "multi_hop",
+      "question": "Who approves a purchase of SGD 30,000 at Northstar Manufacturing, and what is the rule for purchases below SGD 5,000?",
+      "reference": "At Northstar Manufacturing, a purchase of SGD 30,000 requires approval from the relevant divisional director and Finance Director. Purchases below SGD 5,000 require approval from the department manager.",
+      "expected_behavior": "answer",
+      "answer": "[Pipeline Error]",
+      "contexts": [],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "Could not connect to tenant default_tenant. Are you sure it exists?",
+      "duration_seconds": 0.16
+    },
+    {
+      "id": "q07",
+      "category": "aggregation",
+      "question": "What are the FY2026 revenue targets for each of the three business divisions at Northstar Manufacturing, and what is the total approved revenue target?",
+      "reference": "At Northstar Manufacturing, the revenue targets by business division are: SGD 92 million for Industrial Cooling Systems, SGD 36 million for Maintenance and Support Services, and SGD 20 million for Energy-Efficient Technology Solutions. The total approved revenue target is SGD 148 million.",
+      "expected_behavior": "answer",
+      "answer": "According to [northstart.txt], the FY2026 revenue targets for each of the three business divisions at Northstar Manufacturing are:\n\n* Industrial Cooling Systems: SGD 92 million\n* Maintenance and Support Services: SGD 36 million\n* Energy-Efficient Technology Solutions: Not specified in the provided context.\n\nThe total approved revenue target is not explicitly stated, but it can be inferred as SGD 148 million from [northstart.txt].",
+      "contexts": [
+        "9. FY2026 Revenue Summary\nNorthstar\u00d5s approved FY2026 revenue target is SGD 148 million.\nThe revenue target by business division is:\nDivision\nFY2026 Revenue Target\nIndustrial Cooling Systems\nSGD 92 million\nMaintenance and Support Services\nSGD 36 million\nEnergy-Efficient Technology Solutions",
+        "Managers, Procurement, Finance  9. FY2026 Revenue Summary Northstar\u2019s approved FY2026 revenue target is SGD 148 million. The revenue target by business division is: Division FY2026 Revenue Target Industrial Cooling Systems SGD 92 million Maintenance and Support Services SGD 36 million",
+        "the company\u2019s FY2026 revenue target?\u201d the expected answer should be: \u201cI cannot access the requested financial information with your current permissions.\u201d When User B asks the same question, the system may answer: \u201cNorthstar\u2019s approved FY2026 revenue target is SGD 148 million.\u201d When User B asks:"
+      ],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "All metrics must be initialised metric objects, e.g: metrics=[BleuScore(), AspectCritic()]",
+      "duration_seconds": 53.51
+    },
+    {
+      "id": "q08",
+      "category": "out_of_scope",
+      "question": "What is Acme Corp's policy on maternity leave?",
+      "reference": null,
+      "expected_behavior": "refuse",
+      "answer": "[Pipeline Error]",
+      "contexts": [],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "Could not connect to tenant default_tenant. Are you sure it exists?",
+      "duration_seconds": 0.13
+    },
+    {
+      "id": "q09",
+      "category": "out_of_scope",
+      "question": "How much does Northstar Manufacturing spend on employee healthcare benefits?",
+      "reference": null,
+      "expected_behavior": "refuse",
+      "answer": "I can't find that in the ingested documents.",
+      "contexts": [
+        "above SGD 20,000 unless a sole-source justification is approved. Employees must not divide a large purchase into several smaller purchases to avoid approval limits. Information Classification: Internal Allowed Groups: Employees, Managers, Procurement, Finance  9. FY2026 Revenue Summary Northstar\u2019s",
+        "Salary Bands Northstar uses salary bands based on job grade. Grade Minimum Annual Salary Maximum Annual Salary G1 SGD 30,000 SGD 42,000 G2 SGD 40,000 SGD 58,000 G3 SGD 55,000 SGD 78,000 G4 SGD 72,000 SGD 105,000 G5 SGD 98,000 SGD 145,000 G6 SGD 135,000 SGD 210,000 Individual employee salaries must",
+        "9. FY2026 Revenue Summary\nNorthstar\u00d5s approved FY2026 revenue target is SGD 148 million.\nThe revenue target by business division is:\nDivision\nFY2026 Revenue Target\nIndustrial Cooling Systems\nSGD 92 million\nMaintenance and Support Services\nSGD 36 million\nEnergy-Efficient Technology Solutions"
+      ],
+      "scores": {},
+      "correct_refusal": true,
+      "error": null,
+      "duration_seconds": 93.85
+    },
+    {
+      "id": "q10",
+      "category": "ambiguous",
+      "question": "What is the policy for booking flights?",
+      "reference": "The policy depends on the company. For Acme Corp, flights must be booked through the AcmeTravel online portal (https://travel.acme.corp), requiring domestic flights to be booked at least 14 days and international flights 21 days in advance, with economy class mandatory for flights under 6 hours. For Northstar Manufacturing, flights under six hours should be booked in economy class and require manager approval, while business-class travel requires approval from a divisional director.",
+      "expected_behavior": "answer",
+      "answer": "According to [northstart.txt], flights under six hours should be booked in economy class. Additionally, according to [travel_policy.md], all flights must be booked using the AcmeTravel online portal (accessible at `https://travel.acme.corp`) without direct bookings with airlines being reimbursed without prior written VP-level approval.",
+      "contexts": [
+        "7. Travel and Expense Policy\nEmployees must obtain manager approval before booking business travel.\nFlights under six hours should be booked in economy class.\nBusiness-class travel requires approval from a divisional director.\nHotel expenses should not exceed:\nCity\nMaximum Nightly Rate\nSingapore",
+        "unless the application has been formally approved for Restricted data. Information Classification: Internal Allowed Groups: All Employees  7. Travel and Expense Policy Employees must obtain manager approval before booking business travel. Flights under six hours should be booked in economy class.",
+        "*   **Official Portal:** All flights must be booked using the **AcmeTravel online portal** (accessible at `https://travel.acme.corp`). Direct bookings with airlines will not be reimbursed without prior written VP-level approval."
+      ],
+      "scores": {},
+      "correct_refusal": null,
+      "error": "All metrics must be initialised metric objects, e.g: metrics=[BleuScore(), AspectCritic()]",
+      "duration_seconds": 90.61
+    }
+  ]
+}

@@ -315,8 +315,8 @@ if not preflight_ok:
 # Load latest index stats
 stats = get_index_stats(config["persist_dir"])
 
-# Create Ingest / Ask / Trace / Explorer tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📁 Ingest Documents", "❓ Ask Questions", "🧠 Decision Traces", "🗃️ Chroma DB Explorer"])
+# Create Ingest / Ask / Trace / Explorer / Evaluate tabs
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📁 Ingest Documents", "❓ Ask Questions", "🧠 Decision Traces", "🗃️ Chroma DB Explorer", "📊 Evaluate Pipeline"])
 
 # ----------------- TAB 1: INGEST -----------------
 with tab1:
@@ -649,4 +649,345 @@ with tab4:
 
         except Exception as e:
             st.error(f"Failed to read Chroma collection: {e}")
+
+# ----------------- TAB 5: EVALUATE PIPELINE -----------------
+with tab5:
+    st.subheader("📊 RAG Pipeline Quantitative Evaluation (Ragas)")
+    st.markdown(
+        "Run a fixed golden set of 10 questions through the pipeline, evaluate with Google Gemini Flash Lite "
+        "using Ragas (LLM-as-judge) and custom refusal metrics, and compare results against your committed baseline."
+    )
+
+    # Initialize evaluate session states
+    if "active_eval_results" not in st.session_state:
+        st.session_state.active_eval_results = None
+    if "eval_running" not in st.session_state:
+        st.session_state.eval_running = False
+
+    # 1. Environment & Config Verification
+    api_key_check = os.environ.get("GOOGLE_API_KEY", "").strip()
+    if not api_key_check:
+        st.error(
+            "🔑 **Google Gemini API Key Required:** The evaluation judge requires a `GOOGLE_API_KEY` environment variable. "
+            "Please start the application with the key loaded."
+        )
+        st.code("export GOOGLE_API_KEY=\"your_api_key_here\"\nstreamlit run app.py", language="bash")
+        st.stop()
+
+    # Load eval configuration
+    eval_config_path = "evals/config.yaml"
+    if os.path.exists(eval_config_path):
+        import yaml
+        with open(eval_config_path, "r") as f:
+            eval_config = yaml.safe_load(f)
+    else:
+        eval_config = {
+            "judge_model": "gemini-2.5-flash-lite",
+            "concurrency_limit": 4,
+            "thresholds": {"faithfulness": 0.8, "answer_relevancy": 0.8, "context_precision": 0.8, "context_recall": 0.8}
+        }
+
+    # Load baseline if exists
+    baseline = None
+    baseline_path = "evals/scorecards/baseline.json"
+    if os.path.exists(baseline_path):
+        try:
+            with open(baseline_path, "r", encoding="utf-8") as f:
+                baseline = json.load(f)
+        except Exception:
+            pass
+
+    # Visual container for past scorecards / actions
+    col_run, col_base = st.columns([1, 1])
+
+    with col_run:
+        # Run button
+        if st.button("🚀 Run Complete Evaluation", type="primary", disabled=st.session_state.eval_running, use_container_width=True):
+            st.session_state.eval_running = True
+            st.session_state.active_eval_results = None
+            st.rerun()
+
+    with col_base:
+        if baseline:
+            base_meta = baseline.get("metadata", {})
+            st.info(f"📍 **Active Baseline:** Git `{base_meta.get('git_commit', 'unknown')}` ({base_meta.get('timestamp', 'unknown')[:10]})")
+        else:
+            st.warning("⚠️ No baseline scorecard found. Run an evaluation and click 'Save as Baseline' below.")
+
+    # Main evaluation logic execution
+    if st.session_state.eval_running:
+        st.markdown("### 🏃‍♂️ Running Ragas Evaluator...")
+
+        # Placeholders for streaming progress
+        eval_status = st.empty()
+        eval_progress = st.progress(0.0)
+        eval_table_placeholder = st.empty()
+
+        streamed_questions = []
+        eval_start_time = time.time()
+
+        # Callback handler for streaming results
+        def on_question_finish(qid, question_res):
+            streamed_questions.append(question_res)
+            count = len(streamed_questions)
+            elapsed = int(time.time() - eval_start_time)
+
+            # Update status
+            eval_status.markdown(f"⏳ **Evaluating:** `{count}/10` questions completed · `{elapsed}s` elapsed")
+            eval_progress.progress(count / 10.0)
+
+            # Render streaming table
+            import pandas as pd
+            tbl_rows = []
+            for q in streamed_questions:
+                cat = q["category"]
+                if q["expected_behavior"] == "refuse":
+                    ref_status = "Declined (Correct)" if q.get("correct_refusal") else "Failed (Answered)"
+                    tbl_rows.append({
+                        "ID": q["id"],
+                        "Category": cat,
+                        "Faithfulness": "-",
+                        "Relevancy": "-",
+                        "Precision": "-",
+                        "Recall": "-",
+                        "Refusal Accuracy": ref_status
+                    })
+                else:
+                    sc = q.get("scores", {})
+                    tbl_rows.append({
+                        "ID": q["id"],
+                        "Category": cat,
+                        "Faithfulness": f"{sc.get('faithfulness', 0.0):.2f}" if "faithfulness" in sc else "Error",
+                        "Relevancy": f"{sc.get('answer_relevancy', 0.0):.2f}" if "answer_relevancy" in sc else "Error",
+                        "Precision": f"{sc.get('context_precision', 0.0):.2f}" if "context_precision" in sc else "Error",
+                        "Recall": f"{sc.get('context_recall', 0.0):.2f}" if "context_recall" in sc else "Error",
+                        "Refusal Accuracy": "-"
+                    })
+            eval_table_placeholder.dataframe(pd.DataFrame(tbl_rows), use_container_width=True)
+
+        try:
+            # Run evaluation runner programmatically
+            from evals.runner import run_eval
+            scorecard_data = run_eval(
+                golden_set_path="evals/golden_set.json",
+                config=eval_config,
+                on_result=on_question_finish
+            )
+            st.session_state.active_eval_results = scorecard_data
+            st.success("🎉 Evaluation run completed successfully!")
+        except Exception as e:
+            st.error(f"❌ Evaluation run failed: {e}")
+        finally:
+            st.session_state.eval_running = False
+            st.rerun()
+
+    # If results are available (either from active run or loaded session), show scorecard
+    if st.session_state.active_eval_results:
+        sc = st.session_state.active_eval_results
+        metadata = sc.get("metadata", {})
+        curr_metrics = sc.get("metrics", {})
+        questions = sc.get("questions", [])
+
+        st.divider()
+        st.markdown("### 📋 Evaluation Scorecard Summary")
+
+        # Render metadata in columns
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.caption(f"**Timestamp:** {metadata.get('timestamp')[:19].replace('T', ' ')}")
+        with col2:
+            st.caption(f"**Judge Model:** `{metadata.get('judge_model')}`")
+        with col3:
+            st.caption(f"**Git Commit:** `{metadata.get('git_commit')}`")
+        with col4:
+            st.caption(f"**Total Judge Calls:** `{metadata.get('judge_call_count')}` (Hits: `{metadata.get('cache_hit_count')}`)")
+
+        # Render aggregate scores in metric columns (Faithfulness, Relevancy, Precision, Recall, Refusal)
+        metric_cols = st.columns(5)
+        m_keys = ["faithfulness", "answer_relevancy", "context_precision", "context_recall", "refusal_accuracy"]
+        m_labels = ["Faithfulness", "Answer Relevancy", "Context Precision", "Context Recall", "Refusal Accuracy"]
+
+        for idx, (m_key, m_label) in enumerate(zip(m_keys, m_labels)):
+            val = curr_metrics.get(m_key, 0.0)
+            with metric_cols[idx]:
+                if val < 0:
+                    st.metric(label=m_label, value="No Data")
+                else:
+                    # Compare to baseline if exists
+                    delta_str = None
+                    if baseline:
+                        base_val = baseline.get("metrics", {}).get(m_key, 0.0)
+                        if base_val >= 0:
+                            diff = val - base_val
+                            delta_str = f"{diff:+.2f}"
+                    st.metric(label=m_label, value=f"{val:.2f}", delta=delta_str)
+
+        # Actions Row: Save baseline or download JSON
+        act_col1, act_col2 = st.columns(2)
+        with act_col1:
+            scorecard_json_bytes = json.dumps(sc, indent=2, ensure_ascii=False)
+            st.download_button(
+                label="📥 Download Scorecard (JSON)",
+                data=scorecard_json_bytes,
+                file_name=f"scorecard_{metadata.get('timestamp')[:10]}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+        with act_col2:
+            if st.button("🌟 Save as New Baseline", type="secondary", use_container_width=True):
+                try:
+                    with open(baseline_path, "w", encoding="utf-8") as f:
+                        json.dump(sc, f, indent=2)
+                    st.success("Baseline updated successfully! Page will reload...")
+                    time.sleep(1.0)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to update baseline: {e}")
+
+        # Render Scorecard Detailed Questions Table
+        st.markdown("#### 🎯 Question-by-Question Scores")
+        st.caption("Worst performing metric per row is flagged in **red** or highlighted. Refusal questions are skipped from average scores.")
+
+        # Display list of questions with worst-metric highlights and drill-downs
+        for q in questions:
+            qid = q["id"]
+            cat = q["category"]
+            question_text = q["question"]
+            ans = q["answer"]
+            ref = q.get("reference")
+            expected = q["expected_behavior"]
+            error_msg = q.get("error")
+
+            # Determine worst metric or refusal status
+            worst_metric = "-"
+            worst_val = 1.1
+
+            scores = q.get("scores", {})
+            if expected == "refuse":
+                is_correct = q.get("correct_refusal")
+                score_str = "Refused (Correct)" if is_correct else "Answered (Incorrect)"
+                status_color = "green" if is_correct else "red"
+                header_line = f"**{qid}** | `[{cat}]` {question_text[:70]}... → :{status_color}[{score_str}]"
+            elif error_msg:
+                header_line = f"**{qid}** | `[{cat}]` {question_text[:70]}... → :red[[Error]]"
+            else:
+                # Find worst metric
+                for m_k, m_v in scores.items():
+                    if m_v < worst_val:
+                        worst_val = m_v
+                        worst_metric = m_k
+
+                # Format scores summary
+                sc_parts = []
+                for m_k, m_v in scores.items():
+                    label_short = m_k.replace("answer_relevancy", "relevancy").replace("context_", "")
+                    if m_k == worst_metric and m_v < 0.8:
+                        sc_parts.append(f"**:{m_k == worst_metric and 'red' or 'orange'}[{label_short}: {m_v:.2f}]**")
+                    else:
+                        sc_parts.append(f"{label_short}: {m_v:.2f}")
+
+                header_line = f"**{qid}** | `[{cat}]` {question_text[:60]}... ({', '.join(sc_parts)})"
+
+            # Create Drill-Down Expander
+            with st.expander(header_line):
+                if error_msg:
+                    st.error(f"Evaluation failed for this question: {error_msg}")
+
+                st.markdown(f"**Question:** {question_text}")
+                if expected == "refuse":
+                    st.markdown(f"**Expected Behavior:** Decline to answer (Out of Scope)")
+                    st.markdown(f"**Actual Answer:** `{ans}`")
+                    st.markdown(f"**Correct Refusal Score:** `{q.get('correct_refusal')}`")
+                else:
+                    st.markdown(f"**Reference Ground Truth:** {ref}")
+                    st.markdown(f"**Actual Answer:** {ans}")
+
+                    # Scores breakdown
+                    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+                    with col_s1:
+                        st.metric("Faithfulness", f"{scores.get('faithfulness', 0.0):.2f}")
+                    with col_s2:
+                        st.metric("Answer Relevancy", f"{scores.get('answer_relevancy', 0.0):.2f}")
+                    with col_s3:
+                        st.metric("Context Precision", f"{scores.get('context_precision', 0.0):.2f}")
+                    with col_s4:
+                        st.metric("Context Recall", f"{scores.get('context_recall', 0.0):.2f}")
+
+                # Display retrieved chunks
+                st.markdown("**🔍 Retrieved Chunks passed to LLM:**")
+                for c_idx, ctx_chunk in enumerate(q.get("contexts", [])):
+                    st.text_area(f"Chunk {c_idx+1}:", ctx_chunk, height=100, disabled=True)
+
+        # ----------------- Task 5 — Weakest-metric callout -----------------
+        st.divider()
+        st.markdown("### 🧠 Diagnostics & Optimization Levers")
+
+        # Find weakest metric among averages
+        eval_metrics = {k: v for k, v in curr_metrics.items() if k != "refusal_accuracy" and v >= 0}
+        if eval_metrics:
+            weakest_key = min(eval_metrics, key=eval_metrics.get)
+            weakest_val = eval_metrics[weakest_key]
+
+            # Verbatim Diagnostic mapping (from Task 5 table)
+            diagnostics_map = {
+                "context_recall": {
+                    "cause": "Right info never made top-K",
+                    "levers": "Chunk size/overlap, embedding model, raise K, query rewriting"
+                },
+                "context_precision": {
+                    "cause": "Noise crowding signal",
+                    "levers": "Add a reranker, lower K, metadata filters"
+                },
+                "faithfulness": {
+                    "cause": "Model inventing beyond chunks",
+                    "levers": "Grounding instructions, require citations, lower temperature, model swap"
+                },
+                "answer_relevancy": {
+                    "cause": "Correct but off-target",
+                    "levers": "Prompt structure, question restatement, answer-format constraints"
+                }
+            }
+
+            diag = diagnostics_map.get(weakest_key, {"cause": "Unknown", "levers": "Check pipeline config"})
+
+            # Style warning callout based on score
+            alert_type = st.error if weakest_val < 0.8 else st.warning
+            alert_type(
+                f"🚨 **Weakest-Metric Callout: {weakest_key.replace('_', ' ').title()} ({weakest_val:.2f})**\n\n"
+                f"● **Likely Cause:** {diag['cause']}\n\n"
+                f"● **First Levers to Try:** {diag['levers']}"
+            )
+
+            # Verification Table
+            st.markdown("##### Verbatim Diagnostics Matrix reference:")
+            st.markdown(
+                "| Metric down | Likely cause | First levers |\n"
+                "|---|---|---|\n"
+                "| **Context recall** | Right info never made top-K | Chunk size/overlap, embedding model, raise K, query rewriting |\n"
+                "| **Context precision** | Noise crowding signal | Add a reranker, lower K, metadata filters |\n"
+                "| **Faithfulness** | Model inventing beyond chunks | Grounding instructions, require citations, lower temperature, model swap |\n"
+                "| **Answer relevance** | Correct but off-target | Prompt structure, question restatement, answer-format constraints |"
+            )
+
+            # Find two lowest-scoring questions for this weakest metric as repro cases
+            non_refusal_qs = [q for q in questions if q["expected_behavior"] != "refuse" and not q.get("error")]
+
+            def get_q_score(q_obj):
+                return q_obj.get("scores", {}).get(weakest_key, 1.0)
+
+            repro_qs = sorted(non_refusal_qs, key=get_q_score)[:2]
+
+            st.markdown("##### 🧪 Recommended Repro Cases (Lowest Scoring Questions):")
+            for r_q in repro_qs:
+                st.info(
+                    f"● **Question ID:** `{r_q['id']}` · **Category:** `{r_q['category']}` · **Score:** `{get_q_score(r_q):.2f}`\n\n"
+                    f"💬 **Question:** \"{r_q['question']}\"\n\n"
+                    f"📝 **Ground Truth:** \"{r_q.get('reference')}\""
+                )
+        else:
+            st.info("No numerical evaluation metrics available to compute diagnostics.")
+
+    else:
+        st.info("👉 Click **'Run Complete Evaluation'** above to evaluate your RAG pipeline against the golden set.")
+
 
