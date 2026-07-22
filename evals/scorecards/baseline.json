@@ -1,19 +1,19 @@
 {
   "metadata": {
-    "timestamp": "2026-07-22T01:30:00.123456",
-    "git_commit": "70a64c4",
+    "timestamp": "2026-07-22T02:07:11.977147",
+    "git_commit": "3ce7a47",
     "ragas_version": "0.4.3",
     "judge_model": "gemini-2.5-flash-lite",
-    "wall_time_seconds": 45.23,
-    "judge_call_count": 32,
+    "wall_time_seconds": 173.89,
+    "judge_call_count": 34,
     "cache_hit_count": 0
   },
   "metrics": {
-    "faithfulness": 0.85,
-    "answer_relevancy": 0.92,
-    "context_precision": 0.88,
-    "context_recall": 0.82,
-    "refusal_accuracy": 1.00
+    "faithfulness": 0.4896,
+    "answer_relevancy": 0.9234,
+    "context_precision": 0.4792,
+    "context_recall": 0.8021,
+    "refusal_accuracy": 0.5
   },
   "questions": [
     {
@@ -22,18 +22,21 @@
       "question": "Where is the Acme Corp headquarters located?",
       "reference": "Acme Corp headquarters is located on the 5th floor of the Innovation Towers building at 789 Innovation Boulevard, Suite 500, Tech City, CA 94016.",
       "expected_behavior": "answer",
-      "answer": "The corporate headquarters of Acme Corp is located on the 5th floor of the Innovation Towers building, situated at 789 Innovation Boulevard, Suite 500, Tech City, CA 94016.",
+      "answer": "The Acme Corp headquarters is located at **789 Innovation Boulevard, Suite 500** in Tech City, CA 94016 [company_faq.md].",
       "contexts": [
-        "---\n\n## 1. Where is the Acme Corp headquarters located?\nOur corporate headquarters address is:\n**Acme Corp Headquarters**  \n**789 Innovation Boulevard, Suite 500**  \n**Tech City, CA 94016**\n\nThe office is situated on the 5th floor of the Innovation Towers building. Visitors can check in at the main reception desk in the ground-floor lobby."
+        "---\n\n## 1. Where is the Acme Corp headquarters located?\nOur corporate headquarters address is:\n**Acme Corp Headquarters**  \n**789 Innovation Boulevard, Suite 500**  \n**Tech City, CA 94016**",
+        "The office is situated on the 5th floor of the Innovation Towers building. Visitors can check in at the main reception desk in the ground-floor lobby.\n\n---\n\n## 2. What are the rules for parking at the headquarters?\nAcme Corp provides parking facilities for both staff and visitors:",
+        "## 3. When was Acme Corp founded, and who are the founders?\nAcme Corp was officially founded on **August 14, 2019**, by a small group of systems engineers and product designers. \nOur current executive leadership includes:\n*   **Chief Executive Officer (CEO):** Jane Chen"
       ],
       "scores": {
         "faithfulness": 1.0,
-        "answer_relevancy": 0.95,
-        "context_precision": 1.0,
+        "answer_relevancy": 0.9876477104769151,
+        "context_precision": 0.9999999999,
         "context_recall": 1.0
       },
       "correct_refusal": null,
-      "error": null
+      "error": null,
+      "duration_seconds": 165.45
     },
     {
       "id": "q02",
@@ -41,18 +44,21 @@
       "question": "What is the standard lodging limit per night for standard business travel at Acme Corp?",
       "reference": "The standard lodging limit for standard business travel at Acme Corp is $180 per night (excluding local taxes).",
       "expected_behavior": "answer",
-      "answer": "According to the corporate travel guidelines, the standard lodging reimbursement limit for business travel at Acme Corp is $180 per night, excluding taxes.",
+      "answer": "The maximum allowable nightly rate for standard business travel is $180 per night (excluding local taxes) [travel_policy.md].",
       "contexts": [
-        "*   **Standard Lodging Limit:** The maximum allowable nightly rate for standard business travel is **$180 per night** (excluding local taxes)."
+        "*   **Standard Lodging Limit:** The maximum allowable nightly rate for standard business travel is **$180 per night** (excluding local taxes).",
+        "---\n\n## 2. Lodging Guidelines and Allowable Limits\nAcme Corp reimburses reasonable hotel accommodation costs for business travel.",
+        "# Acme Corp Corporate Travel & Expense Policy\n\n**Document ID:** ACME-FIN-TRV-2026  \n**Effective Date:** February 1, 2026  \n**Version:** 2.5  \n**Owner:** Finance and Accounts Payable Team  \n\n---"
       ],
       "scores": {
-        "faithfulness": 1.0,
-        "answer_relevancy": 0.98,
-        "context_precision": 1.0,
+        "faithfulness": 0.6666666666666666,
+        "answer_relevancy": 0.7922409899942303,
+        "context_precision": 0.9999999999,
         "context_recall": 1.0
       },
       "correct_refusal": null,
-      "error": null
+      "error": null,
+      "duration_seconds": 131.83
     },
     {
       "id": "q03",
@@ -60,18 +66,21 @@
       "question": "Who is Daniel Lim's employer, and what is his job grade and monthly transport allowance?",
       "reference": "Daniel Lim is employed by Northstar Manufacturing Pte. Ltd. His job grade is G4 and his monthly transport allowance is SGD 400.",
       "expected_behavior": "answer",
-      "answer": "Daniel Lim works for Northstar Manufacturing Pte. Ltd. He holds a job grade of G4 and receives a monthly transport allowance of SGD 400.",
+      "answer": "According to the provided context, Daniel Lim's employer is Northstar Manufacturing.\n\nHis job grade is G4 (as stated in [Northstar Manufacturing FY2026 Employee Guide.pdf]).\n\nHis monthly transport allowance is SGD 400 (also stated in [Northstar Manufacturing FY2026 Employee Guide.pdf]).",
       "contexts": [
-        "12. Individual Payroll Record\nEmployee Name: Daniel Lim\nEmployee ID: NSM-10452\nDepartment: Engineering\nJob Grade: G4\nAnnual Base Salary: SGD 96,000\nMonthly Transport Allowance: SGD 400\nBank Name: Example National Bank\nBank Account Number: 123-456-789-001\nCPF Contribution Status: Active"
+        "Information Classification: Confidential Allowed Groups: Human Resources, Payroll, Authorized Managers  12. Individual Payroll Record Employee Name: Daniel Lim Employee ID: NSM-10452 Department: Engineering Job Grade: G4 Annual Base Salary: SGD 96,000 Monthly Transport Allowance: SGD 400 Bank Name:",
+        "12. Individual Payroll Record\nEmployee Name: Daniel Lim\nEmployee ID: NSM-10452\nDepartment: Engineering\nJob Grade: G4\nAnnual Base Salary: SGD 96,000\nMonthly Transport Allowance: SGD 400\nBank Name: Example National Bank\nBank Account Number: 123-456-789-001\nCPF Contribution Status: Active",
+        "Annual Base Salary: SGD 96,000 Monthly Transport Allowance: SGD 400 Bank Name: Example National Bank Bank Account Number: 123-456-789-001 CPF Contribution Status: Active This record must not be provided to general employees, unrelated managers or external contractors. Information Classification:"
       ],
       "scores": {
-        "faithfulness": 1.0,
-        "answer_relevancy": 0.96,
-        "context_precision": 1.0,
-        "context_recall": 1.0
+        "faithfulness": 0.6666666666666666,
+        "answer_relevancy": 0.9705757116302202,
+        "context_precision": 0.0,
+        "context_recall": 0.6666666666666666
       },
       "correct_refusal": null,
-      "error": null
+      "error": null,
+      "duration_seconds": 124.36
     },
     {
       "id": "q04",
@@ -79,18 +88,21 @@
       "question": "What is the maximum number of unused annual leave days that a Northstar Manufacturing employee can carry forward?",
       "reference": "A maximum of 10 unused leave days may be carried forward.",
       "expected_behavior": "answer",
-      "answer": "Under the current leave policy, full-time employees can carry forward a maximum of 10 unused annual leave days into the next calendar year.",
+      "answer": "According to [northstart.txt], a maximum of 10 unused leave days may be carried forward for one calendar year. Additionally, [Northstar Manufacturing FY2026 Employee Guide.pdf] states the same information, confirming that the maximum number is indeed 10.",
       "contexts": [
-        "Unused annual leave may be carried forward for one calendar year. A maximum of 10 unused leave days may be carried forward."
+        "Less than 2 years\n14 days\n2 to 5 years\n18 days\nMore than 5 years\n22 days\nUnused annual leave may be carried forward for one calendar year. A maximum of 10 unused leave days may be carried forward.\nEmployees must submit planned annual leave at least seven calendar days in advance.",
+        "### 3.1 Annual Leave (Vacation)\nFull-time employees accrue vacation days monthly, totaling **22 paid days per calendar year**. \n*   A maximum of **5 unused vacation days** can be rolled over to the next calendar year. Any additional unused days beyond 5 will be forfeited on December 31st.",
+        "More than 5 years 22 days Unused annual leave may be carried forward for one calendar year. A maximum of 10 unused leave days may be carried forward. Employees must submit planned annual leave at least seven calendar days in advance. Emergency leave may be submitted on the same day, but the"
       ],
       "scores": {
-        "faithfulness": 1.0,
-        "answer_relevancy": 0.94,
-        "context_precision": 1.0,
+        "faithfulness": 0.5,
+        "answer_relevancy": 0.9558331631177553,
+        "context_precision": 0.8333333332916666,
         "context_recall": 1.0
       },
       "correct_refusal": null,
-      "error": null
+      "error": null,
+      "duration_seconds": 108.11
     },
     {
       "id": "q05",
@@ -98,19 +110,21 @@
       "question": "What is the password complexity minimum length requirement for Acme Corp, and how does it compare to the password length requirement for Northstar Manufacturing?",
       "reference": "Acme Corp requires passwords to be at least 15 characters in length, whereas Northstar Manufacturing requires passwords to contain at least 14 characters.",
       "expected_behavior": "answer",
-      "answer": "Acme Corp requires a minimum password length of 15 characters for corporate accounts. In comparison, Northstar Manufacturing mandates passwords to have at least 14 characters.",
+      "answer": "According to [it_security_policy.md], the minimum password length requirement for Acme Corp is at least 15 characters. However, for Northstar Manufacturing, the requirement is at least 14 characters.\n\nIt's worth noting that both companies have similar composition requirements for passwords, including a mixture of uppercase letters, lowercase letters, and numbers.",
       "contexts": [
-        "Minimum Length: All passwords must be at least 15 characters in length.",
-        "Passwords must contain at least 14 characters."
+        "*   **Minimum Length:** All passwords must be at least **15 characters** in length.\n*   **Composition Requirements:** Passwords must contain a mixture of:\n    *   At least **one uppercase letter** (A-Z)\n    *   At least **one lowercase letter** (a-z)\n    *   At least **one number** (0-9)",
+        "5. Information Security Requirements\nAll employees must follow the company\u00d5s information-security requirements.\nPasswords must contain at least 14 characters.\nMulti-factor authentication is mandatory for:\n* email;\n* remote access;\n* financial systems;\n* administrative accounts;",
+        "---\n\n## 1. Password Complexity and Rotation Guidelines\nSecuring company accounts is critical to protecting our infrastructure. All employees must adhere to the following password rules:"
       ],
       "scores": {
-        "faithfulness": 0.9,
-        "answer_relevancy": 0.92,
-        "context_precision": 0.85,
-        "context_recall": 0.9
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.9507033527787653,
+        "context_precision": 0.0,
+        "context_recall": 1.0
       },
       "correct_refusal": null,
-      "error": null
+      "error": null,
+      "duration_seconds": 97.4
     },
     {
       "id": "q06",
@@ -118,19 +132,21 @@
       "question": "Who approves a purchase of SGD 30,000 at Northstar Manufacturing, and what is the rule for purchases below SGD 5,000?",
       "reference": "At Northstar Manufacturing, a purchase of SGD 30,000 requires approval from the relevant divisional director and Finance Director. Purchases below SGD 5,000 require approval from the department manager.",
       "expected_behavior": "answer",
-      "answer": "At Northstar Manufacturing, any purchase of SGD 30,000 requires sign-offs from both the relevant divisional director and the Finance Director. For small purchases below SGD 5,000, approval from the department manager is sufficient.",
+      "answer": "According to [northstart.txt], a purchase above SGD 25,000 requires approval from the relevant divisional director and Finance Director. Since SGD 30,000 is above SGD 25,000, the person approving this purchase would be the divisional director and Finance Director.\n\nAdditionally, according to [northstar Manufacturing FY2026 Employee Guide.pdf] and [northstart.txt], purchases below SGD 5,000 require approval from the department manager.",
       "contexts": [
-        "Purchases below SGD 5,000 require approval from the department manager.",
-        "Purchases above SGD 25,000 require approval from the relevant divisional director and Finance Director."
+        "8. Procurement Policy Purchases below SGD 5,000 require approval from the department manager. Purchases from SGD 5,000 to SGD 25,000 require approval from the department manager and Finance. Purchases above SGD 25,000 require approval from the relevant divisional director and Finance Director.",
+        "8. Procurement Policy\nPurchases below SGD 5,000 require approval from the department manager.\nPurchases from SGD 5,000 to SGD 25,000 require approval from the department manager and Finance.\nPurchases above SGD 25,000 require approval from the relevant divisional director and Finance Director.",
+        "17.2 Can an employee use a personal computer to access the finance system?\nNo.\u00caEmployees must use a company-managed device.\n17.3 Who approves a purchase worth SGD 30,000?\nA purchase above SGD 25,000 requires approval from the divisional director and Finance Director."
       ],
       "scores": {
-        "faithfulness": 0.85,
-        "answer_relevancy": 0.9,
-        "context_precision": 0.8,
-        "context_recall": 0.85
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.8467598753438272,
+        "context_precision": 0.99999999995,
+        "context_recall": 1.0
       },
       "correct_refusal": null,
-      "error": null
+      "error": null,
+      "duration_seconds": 83.22
     },
     {
       "id": "q07",
@@ -138,18 +154,21 @@
       "question": "What are the FY2026 revenue targets for each of the three business divisions at Northstar Manufacturing, and what is the total approved revenue target?",
       "reference": "At Northstar Manufacturing, the revenue targets by business division are: SGD 92 million for Industrial Cooling Systems, SGD 36 million for Maintenance and Support Services, and SGD 20 million for Energy-Efficient Technology Solutions. The total approved revenue target is SGD 148 million.",
       "expected_behavior": "answer",
-      "answer": "The division-specific targets for Northstar Manufacturing are: SGD 92M for Industrial Cooling Systems, SGD 36M for Maintenance and Support Services, and SGD 20M for Energy-Efficient Solutions. This aggregates to a total approved revenue target of SGD 148 million.",
+      "answer": "According to [northstart.txt], the FY2026 revenue targets for each of the three business divisions at Northstar Manufacturing are:\n\n* Industrial Cooling Systems: SGD 92 million\n* Maintenance and Support Services: SGD 36 million\n* Energy-Efficient Technology Solutions: Not specified in the provided context.\n\nThe total approved revenue target is not explicitly stated, but it can be inferred as SGD 148 million from [northstart.txt].",
       "contexts": [
-        "Northstar's approved FY2026 revenue target is SGD 148 million.\nThe revenue target by business division is:\nDivision | FY2026 Revenue Target\nIndustrial Cooling Systems | SGD 92 million\nMaintenance and Support Services | SGD 36 million\nEnergy-Efficient Technology Solutions | SGD 20 million"
+        "9. FY2026 Revenue Summary\nNorthstar\u00d5s approved FY2026 revenue target is SGD 148 million.\nThe revenue target by business division is:\nDivision\nFY2026 Revenue Target\nIndustrial Cooling Systems\nSGD 92 million\nMaintenance and Support Services\nSGD 36 million\nEnergy-Efficient Technology Solutions",
+        "Managers, Procurement, Finance  9. FY2026 Revenue Summary Northstar\u2019s approved FY2026 revenue target is SGD 148 million. The revenue target by business division is: Division FY2026 Revenue Target Industrial Cooling Systems SGD 92 million Maintenance and Support Services SGD 36 million",
+        "the company\u2019s FY2026 revenue target?\u201d the expected answer should be: \u201cI cannot access the requested financial information with your current permissions.\u201d When User B asks the same question, the system may answer: \u201cNorthstar\u2019s approved FY2026 revenue target is SGD 148 million.\u201d When User B asks:"
       ],
       "scores": {
-        "faithfulness": 0.92,
-        "answer_relevancy": 0.94,
-        "context_precision": 0.9,
-        "context_recall": 0.8
+        "faithfulness": 0.75,
+        "answer_relevancy": 0.9877035254131014,
+        "context_precision": 0.0,
+        "context_recall": 0.75
       },
       "correct_refusal": null,
-      "error": null
+      "error": null,
+      "duration_seconds": 65.69
     },
     {
       "id": "q08",
@@ -157,11 +176,16 @@
       "question": "What is Acme Corp's policy on maternity leave?",
       "reference": null,
       "expected_behavior": "refuse",
-      "answer": "I do not have access to any corporate policy on maternity leave for Acme Corp in the provided documents. I must decline to answer.",
-      "contexts": [],
+      "answer": "According to [employee_handbook.md], Acme Corp provides up to 16 weeks of fully paid parental leave following the birth, adoption, or foster placement of a child. This includes both primary and secondary caregivers.",
+      "contexts": [
+        "---\n\n## 3. Paid Time Off (PTO) and Leaves\nAcme Corp believes in work-life balance and provides generous paid leave options to all eligible employees.",
+        "### 3.2 Parental Leave\nAcme Corp supports growing families. All primary and secondary caregivers are eligible for parental leave:\n*   **Primary Caregiver Leave:** Up to **16 weeks** of fully paid parental leave following the birth, adoption, or foster placement of a child.",
+        "1.  **Acme Alpha Plan (PPO):**\n    *   Low deductible ($500 individual / $1,000 family).\n    *   Co-insurance of 10% after deductible is met.\n    *   Best for families and frequent healthcare users.\n2.  **Acme Beta Plan (EPO):**\n    *   Moderate deductible ($1,200 individual / $2,400 family)."
+      ],
       "scores": {},
-      "correct_refusal": true,
-      "error": null
+      "correct_refusal": false,
+      "error": null,
+      "duration_seconds": 44.66
     },
     {
       "id": "q09",
@@ -169,11 +193,16 @@
       "question": "How much does Northstar Manufacturing spend on employee healthcare benefits?",
       "reference": null,
       "expected_behavior": "refuse",
-      "answer": "The available documents do not cover employee healthcare benefits or spending parameters for Northstar Manufacturing. Therefore, I cannot provide this information.",
-      "contexts": [],
+      "answer": "I can't find that in the ingested documents.",
+      "contexts": [
+        "above SGD 20,000 unless a sole-source justification is approved. Employees must not divide a large purchase into several smaller purchases to avoid approval limits. Information Classification: Internal Allowed Groups: Employees, Managers, Procurement, Finance  9. FY2026 Revenue Summary Northstar\u2019s",
+        "Salary Bands Northstar uses salary bands based on job grade. Grade Minimum Annual Salary Maximum Annual Salary G1 SGD 30,000 SGD 42,000 G2 SGD 40,000 SGD 58,000 G3 SGD 55,000 SGD 78,000 G4 SGD 72,000 SGD 105,000 G5 SGD 98,000 SGD 145,000 G6 SGD 135,000 SGD 210,000 Individual employee salaries must",
+        "9. FY2026 Revenue Summary\nNorthstar\u00d5s approved FY2026 revenue target is SGD 148 million.\nThe revenue target by business division is:\nDivision\nFY2026 Revenue Target\nIndustrial Cooling Systems\nSGD 92 million\nMaintenance and Support Services\nSGD 36 million\nEnergy-Efficient Technology Solutions"
+      ],
       "scores": {},
       "correct_refusal": true,
-      "error": null
+      "error": null,
+      "duration_seconds": 33.71
     },
     {
       "id": "q10",
@@ -181,19 +210,21 @@
       "question": "What is the policy for booking flights?",
       "reference": "The policy depends on the company. For Acme Corp, flights must be booked through the AcmeTravel online portal (https://travel.acme.corp), requiring domestic flights to be booked at least 14 days and international flights 21 days in advance, with economy class mandatory for flights under 6 hours. For Northstar Manufacturing, flights under six hours should be booked in economy class and require manager approval, while business-class travel requires approval from a divisional director.",
       "expected_behavior": "answer",
-      "answer": "The booking requirements differ depending on the company. For Acme Corp, flights must be booked via the AcmeTravel portal, with lead times of 14 days for domestic and 21 days for international routes, and economy is mandatory for flights under 6 hours. For Northstar Manufacturing, employees must get manager approval before booking, and economy is required for flights under 6 hours while business class needs a divisional director's approval.",
+      "answer": "According to [northstart.txt], flights under six hours should be booked in economy class. Additionally, according to [travel_policy.md], all flights must be booked using the AcmeTravel online portal (accessible at `https://travel.acme.corp`) without direct bookings with airlines being reimbursed without prior written VP-level approval.",
       "contexts": [
-        "Official Portal: All flights must be booked using the AcmeTravel online portal (accessible at https://travel.acme.corp)... Booking Lead Time: Domestic flights must be booked at least 14 days in advance. International flights must be booked at least 21 days in advance... Economy Class: Mandatory for all flights with a continuous flight duration of under 6 hours.",
-        "Employees must obtain manager approval before booking business travel. Flights under six hours should be booked in economy class. Business-class travel requires approval from a divisional director."
+        "7. Travel and Expense Policy\nEmployees must obtain manager approval before booking business travel.\nFlights under six hours should be booked in economy class.\nBusiness-class travel requires approval from a divisional director.\nHotel expenses should not exceed:\nCity\nMaximum Nightly Rate\nSingapore",
+        "unless the application has been formally approved for Restricted data. Information Classification: Internal Allowed Groups: All Employees  7. Travel and Expense Policy Employees must obtain manager approval before booking business travel. Flights under six hours should be booked in economy class.",
+        "*   **Official Portal:** All flights must be booked using the **AcmeTravel online portal** (accessible at `https://travel.acme.corp`). Direct bookings with airlines will not be reimbursed without prior written VP-level approval."
       ],
       "scores": {
-        "faithfulness": 0.15,
-        "answer_relevancy": 0.91,
-        "context_precision": 0.5,
-        "context_recall": 0.1
+        "faithfulness": 0.3333333333333333,
+        "answer_relevancy": 0.8961207911492961,
+        "context_precision": 0.0,
+        "context_recall": 0.0
       },
       "correct_refusal": null,
-      "error": null
+      "error": null,
+      "duration_seconds": 24.63
     }
   ]
 }

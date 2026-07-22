@@ -11,3 +11,4 @@ python-dotenv
 ragas==0.4.3
 langchain-google-genai==4.2.7
 google-genai==2.12.1
+anthropic==0.117.1

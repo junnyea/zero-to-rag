@@ -79,6 +79,7 @@ async def score_refusal_with_backoff(
     answer: str,
     judge_model: str,
     use_ollama: bool,
+    use_proxy: bool,
     semaphore: asyncio.Semaphore,
     max_retries: int = 5,
     base_delay: float = 2.0
@@ -118,6 +119,17 @@ async def score_refusal_with_backoff(
                         temperature=0.0
                     )
                     res_text = response.choices[0].message.content.strip().lower()
+                elif use_proxy:
+                    from anthropic import AsyncAnthropic
+                    token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
+                    base_url = os.environ.get("ANTHROPIC_BASE_URL")
+                    client = AsyncAnthropic(api_key=token, base_url=base_url)
+                    response = await client.messages.create(
+                        model=judge_model,
+                        max_tokens=100,
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    res_text = response.content[0].text.strip().lower()
                 else:
                     # Initialize Google GenAI client
                     client = genai.Client()
@@ -240,16 +252,30 @@ def run_eval(
     """
     Core programmatic evaluation harness.
     Runs a golden set of questions through the RAG pipeline and scores them with Ragas.
-    Supports local Ollama judge if GOOGLE_API_KEY is missing.
+    Supports Google Gemini, Anthropic Proxy, and local Ollama fallback.
     """
-    # 1. Check Google API Key
+    # 1. Determine active Judge provider
     api_key = os.environ.get("GOOGLE_API_KEY", "").strip()
+    anthropic_token = os.environ.get("ANTHROPIC_AUTH_TOKEN", "").strip()
+    anthropic_base = os.environ.get("ANTHROPIC_BASE_URL", "").strip()
+
     use_ollama = False
-    if not api_key:
-        print("\n⚠️  [Warning] GOOGLE_API_KEY environment variable is missing.")
+    use_proxy = False
+
+    if api_key:
+        judge_provider_str = "Cloud Gemini"
+    elif anthropic_token and anthropic_base:
+        print("\n🔑 [Info] GOOGLE_API_KEY is missing but ANTHROPIC_AUTH_TOKEN is present.")
+        print("    Configuring cloud Gemini-Lite judge via corporate LLMProxy.")
+        print("    This enables high-precision cloud metrics with zero personal setup!\n")
+        use_proxy = True
+        judge_provider_str = "LLMProxy (Gemini via Anthropic endpoint)"
+    else:
+        print("\n⚠️  [Warning] Both GOOGLE_API_KEY and ANTHROPIC_AUTH_TOKEN are missing.")
         print("    Failing back to locally hosted Ollama ('llama3.2:3b') as evaluation judge.")
         print("    Ensure your local Ollama server is running with 'llama3.2:3b' and 'nomic-embed-text' loaded.\n")
         use_ollama = True
+        judge_provider_str = "Local Ollama"
 
     # Load configuration fields
     judge_model = "llama3.2:3b" if use_ollama else config.get("judge_model", "gemini-2.5-flash-lite")
@@ -274,7 +300,8 @@ def run_eval(
     rag_config = load_rag_config()
 
     print(f"\n🚀 Starting Stage 3 Evaluation Runner (10 Questions)")
-    print(f"   - Judge Model:      {judge_model} {'(Local Ollama)' if use_ollama else '(Cloud Gemini)'}")
+    print(f"   - Judge Provider:   {judge_provider_str}")
+    print(f"   - Judge Model:      {judge_model}")
     print(f"   - Active RAG LLM:   {rag_config.get('llm_model')}")
     print(f"   - Active Strategy:  {rag_config.get('retrieval_strategy')}")
     print(f"   - Concurrency Limit: {concurrency_limit}\n")
@@ -292,6 +319,15 @@ def run_eval(
             async_client = AsyncOpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
             ragas_llm = llm_factory(judge_model, provider="openai", client=async_client)
             ragas_embeddings = OpenAIEmbeddings(client=async_client, model="nomic-embed-text")
+        elif use_proxy:
+            from anthropic import AsyncAnthropic
+            from openai import AsyncOpenAI
+            from ragas.embeddings import OpenAIEmbeddings
+            async_client = AsyncOpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
+            ragas_embeddings = OpenAIEmbeddings(client=async_client, model="nomic-embed-text")
+
+            proxy_client = AsyncAnthropic(api_key=anthropic_token, base_url=anthropic_base)
+            ragas_llm = llm_factory(judge_model, provider="anthropic", client=proxy_client)
         else:
             from ragas.embeddings import GoogleEmbeddings
             client = genai.Client()
@@ -388,6 +424,7 @@ def run_eval(
                         answer=answer,
                         judge_model=judge_model,
                         use_ollama=use_ollama,
+                        use_proxy=use_proxy,
                         semaphore=semaphore
                     )
                     correct_refusal = is_correct

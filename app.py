@@ -666,13 +666,18 @@ with tab5:
 
     # 1. Environment & Config Verification
     api_key_check = os.environ.get("GOOGLE_API_KEY", "").strip()
-    if not api_key_check:
-        st.error(
-            "🔑 **Google Gemini API Key Required:** The evaluation judge requires a `GOOGLE_API_KEY` environment variable. "
-            "Please start the application with the key loaded."
+    anthropic_token_check = os.environ.get("ANTHROPIC_AUTH_TOKEN", "").strip()
+
+    if api_key_check:
+        st.success("🔑 **Cloud Gemini Judge Enabled:** Loaded `GOOGLE_API_KEY` natively.")
+    elif anthropic_token_check:
+        st.info("🔑 **Proxy Gemini Judge Enabled:** Loaded cloud Gemini model (`gemini-2.5-flash-lite`) via corporate LLMProxy using your Anthropic key!")
+    else:
+        st.warning(
+            "⚠️ **Local Ollama Fallback Active:** No cloud API keys found. "
+            "The evaluation judge will fall back to local Ollama ('llama3.2:3b'). "
+            "Please note that local CPU evaluations may be significantly slower."
         )
-        st.code("export GOOGLE_API_KEY=\"your_api_key_here\"\nstreamlit run app.py", language="bash")
-        st.stop()
 
     # Load eval configuration
     eval_config_path = "evals/config.yaml"
